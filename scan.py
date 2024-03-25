@@ -99,7 +99,7 @@ class DocScanner(object):
         angles = [ura, ula, lra, lla]
         return np.ptp(angles)
 
-    def get_corners(self, img, log_img_dir):
+    def get_corners(self, img, log_img_dir, orig_img):
         """
         Returns a list of corners ((x, y) tuples) found in the input image. With proper
         pre-processing and filtering, it should output at most 10 potential corners.
@@ -108,10 +108,10 @@ class DocScanner(object):
         """
         lines = lsd(img)
         if self.debug:
-            lined_img = img.copy()
+            lined_img = orig_img.copy()
             for line in lines:
                 point1_x, point1_y, point2_x, point2_y, width = line
-                cv2.line(lined_img, (int(point1_x), int(point1_y)), (int(point2_x), int(point2_y)), (0, 255, 0), 3)
+                cv2.line(lined_img, (int(point1_x), int(point1_y)), (int(point2_x), int(point2_y)), (0, 255, 0), 2)
             cv2.imwrite(os.path.join(log_img_dir, 'lsd.png'), lined_img)
 
         # massages the output from LSD
@@ -177,6 +177,12 @@ class DocScanner(object):
 
         # remove corners in close proximity
         corners = self.filter_corners(corners)
+        if self.debug:
+            corners_img = orig_img.copy()
+            for corner in corners:
+                x, y = map(int, corner)
+                cv2.circle(corners_img, (x, y), 3, (255, 255, 255), 1)
+            cv2.imwrite(os.path.join(log_img_dir, 'corners.png'), corners_img)
         return corners
 
     def is_valid_contour(self, cnt, IM_WIDTH, IM_HEIGHT):
@@ -200,7 +206,7 @@ class DocScanner(object):
         HOUGH = 25
 
         IM_HEIGHT, IM_WIDTH, _ = rescaled_image.shape
-
+        orig_img = rescaled_image.copy()
         # convert the image to grayscale and blur it slightly
         gray = cv2.cvtColor(rescaled_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (7, 7), 0)
@@ -211,12 +217,12 @@ class DocScanner(object):
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (MORPH, MORPH))
         dilated = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
         if self.debug:
-            cv2.imwrite(os.path.join(log_img_dir, 'dilated.png'), dilated)
+            cv2.imwrite(os.path.join(log_img_dir, 'blured.png'), dilated)
         # find edges and mark them in the output map using the Canny algorithm
         edged = cv2.Canny(dilated, 0, CANNY)
         if self.debug:
             cv2.imwrite(os.path.join(log_img_dir, 'canny.png'), edged)
-        test_corners = self.get_corners(edged, log_img_dir)
+        test_corners = self.get_corners(edged, log_img_dir, orig_img)
 
         approx_contours = []
 
