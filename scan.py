@@ -1,11 +1,12 @@
 """
 Usage:
-    scan.py [--images <IMG_DIR> | --image <IMG_PATH>] [-i] [--verbose]
+    scan.py [--images <IMG_DIR> | --image <IMG_PATH>] [-S | --segmentation] [-i] [--verbose]
 
 Options:
     --images <IMG_DIR>       Scan all images in the specified directory.
     --image <IMG_PATH>       Scan the specified image.
     -i                       Enable interactive mode.
+    -S --segmentation        Enable write segmentation
     --verbose                More images output
 
 For example, to scan a single image with interactive mode:
@@ -31,11 +32,14 @@ from pylsd.lsd import lsd
 
 import os
 
+import segmentation
+
 
 class DocScanner(object):
     """An image scanner"""
 
-    def __init__(self, interactive=False, debug=False, MIN_QUAD_AREA_RATIO=0.25, MAX_QUAD_ANGLE_RANGE=40):
+    def __init__(self, interactive=False, debug=False, write_contours=False, MIN_QUAD_AREA_RATIO=0.25,
+                 MAX_QUAD_ANGLE_RANGE=40):
         """
         Args:
             interactive (boolean): If True, user can adjust screen contour before
@@ -51,6 +55,7 @@ class DocScanner(object):
         self.MIN_QUAD_AREA_RATIO = MIN_QUAD_AREA_RATIO
         self.MAX_QUAD_ANGLE_RANGE = MAX_QUAD_ANGLE_RANGE
         self.debug = debug
+        self.write_contours = write_contours
 
     def filter_corners(self, corners, min_dist=20):
         """Filters corners that are within min_dist of others"""
@@ -333,6 +338,13 @@ class DocScanner(object):
 
         # save the transformed image
         cv2.imwrite(os.path.join(OUTPUT_DIR, os.path.basename(image_path)), thresh)
+
+        if self.write_contours:
+            cnts = segmentation.segmentation(cv2.imread(os.path.join(OUTPUT_DIR, os.path.basename(image_path))))
+            out_path = os.path.join(log_img_dir, 'contours')
+            os.makedirs(out_path, exist_ok=True)
+            segmented = segmentation.write_contours(thresh, cnts, out_path)
+            cv2.imwrite(os.path.join(log_img_dir, 'segmented.jpg'), segmented)
         print("Proccessed " + img_name)
 
 
@@ -341,8 +353,9 @@ def main(opts):
     im_file = opts["--image"] if opts["--image"] else ''
     interactive = opts["-i"] if opts["-i"] else False
     verbose = opts["--verbose"] if opts["--verbose"] else False
+    segment = opts["--segmentation"] if opts["--segmentation"] else False
 
-    scanner = DocScanner(interactive, verbose)
+    scanner = DocScanner(interactive, verbose, segment)
 
     valid_formats = [".jpg", ".jpeg", ".jp2", ".png", ".bmp", ".tiff", ".tif"]
 
@@ -357,6 +370,7 @@ def main(opts):
     else:
         im_files = [f for f in os.listdir(im_dir) if get_ext(f) in valid_formats]
         for im in im_files:
+            print(im)
             scanner.scan(os.path.join(im_dir, im), verbose)
     return
 
