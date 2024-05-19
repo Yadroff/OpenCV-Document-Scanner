@@ -364,7 +364,7 @@ def main(opts):
 
     # Scan single image specified by command line argument --image <IMAGE_PATH>
     if im_file:
-        scanner.scan(im_file)
+        scanner.scan(im_file, verbose)
 
     # Scan all valid images in directory specified by command line argument --images <IMAGE_DIR>
     else:
