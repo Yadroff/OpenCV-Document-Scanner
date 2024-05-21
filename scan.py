@@ -257,6 +257,10 @@ class DocScanner(object):
         (cnts, hierarchy) = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:5]
 
+        if self.debug:
+            contours_img = orig_img.copy()
+            cv2.drawContours(contours_img, cnts, -1, (0, 255, 0), 3)
+            cv2.imwrite(os.path.join(log_img_dir, 'programmed_contours.png'), contours_img)
         # loop over the contours
         for c in cnts:
             # approximate the contour
